@@ -1,0 +1,102 @@
+@startuml DataModel
+
+!theme spacelab
+
+' Entidades Principais
+
+class UsuarioFirebase {
+  + uid: string
+  + email: string
+  + nome: string (opcional)
+  ' Outros dados do Firebase Auth
+}
+
+class Congregacao {
+  + id: string
+  + nome: string
+  + criadaPorUserId: string <<FK>>
+}
+
+class MembroCongregacao {
+  + id: string
+  + userId: string <<FK>>
+  + congregacaoId: string <<FK>>
+  + role: string {Admin, Dirigente}
+  + status: string {Pendente, Ativo}
+  + convidadoPorUserId: string <<FK>> (opcional)
+  + dataConvite: timestamp (opcional)
+}
+
+class Bairro {
+  + id: string
+  + nome: string
+  + congregacaoId: string <<FK>>
+}
+
+class CartaoTerritorio {
+  + id: string
+  + numero: number
+  + bairroId: string <<FK>>
+  + imagemNome: string (opcional) ' Nome do arquivo da imagem no Storage
+}
+
+class Rua {
+  + id: string
+  + nome: string
+  + cartaoTerritorioId: string <<FK>>
+}
+
+class Imovel {
+  + id: string
+  + numero: string
+  + lado: string {par, impar}
+  + ruaId: string <<FK>>
+  ---
+  + status: string {Não Trabalhado, Atendido, Revisita, Estudo, Imóvel Fechado, Casa Vazia, Não Bater}
+  + moradorNome: string (opcional)
+  + observacoes: string (opcional)
+  + ultimaAtualizacao: timestamp (opcional)
+  + atualizadoPorUserId: string (opcional, se publicador logado)
+  + atualizadoPorUrlToken: string (opcional, se anônimo)
+}
+
+class SaidaCampo {
+  + id: string
+  + dataHoraInicio: timestamp
+  + dataHoraFim: timestamp (opcional)
+  + membroCongregacaoId: string <<FK>> ' Vincula ao dirigente naquela congregação
+  + bairroId: string <<FK>>
+  + cartaoTerritorioId: string <<FK>>
+}
+
+' Relacionamentos
+
+UsuarioFirebase "1" -- "*" MembroCongregacao : é membro de >
+Congregacao "1" -- "*" MembroCongregacao : tem membro <
+Congregacao "1" -- "*" Bairro : contém >
+Bairro "1" -- "*" CartaoTerritorio : contém >
+CartaoTerritorio "1" -- "*" Rua : contém >
+Rua "1" -- "*" Imovel : contém >
+
+MembroCongregacao "1" -- "*" SaidaCampo : registra >
+Bairro "1" -- "*" SaidaCampo : referente a >
+CartaoTerritorio "1" -- "*" SaidaCampo : referente a >
+
+' Notas
+
+note "Usuários são gerenciados pelo Firebase Authentication.\nA entidade UsuarioFirebase representa os dados básicos.\nA entidade MembroCongregacao vincula um usuário a uma ou mais congregações com um papel específico (Admin/Dirigente) e status (Pendente/Ativo para convites)." as N1
+UsuarioFirebase .. N1
+MembroCongregacao .. N1
+
+note right of Congregacao : "O campo criadaPorUserId indica o administrador inicial.\nOutros administradores são adicionados via MembroCongregacao com role='Admin'." as N_Admin
+
+note right of MembroCongregacao : "Status='Pendente' indica um convite enviado.\nStatus='Ativo' indica que o usuário aceitou.\n'convidadoPorUserId' e 'dataConvite' rastreiam o convite." as N_Convite
+
+note bottom of SaidaCampo : "dataHoraInicio e dataHoraFim armazenam data e hora.\nO vínculo com o dirigente é feito através de membroCongregacaoId." as N_Saida
+
+note right of Imovel : "O publicador anônimo atualiza o status do Imóvel.\n'atualizadoPorUrlToken' pode rastrear qual URL foi usada.\n'atualizadoPorUserId' pode ser usado se o publicador estiver logado (funcionalidade futura?)." as N2
+
+note bottom of CartaoTerritorio : "'imagemNome' armazena o nome do arquivo\nda imagem do cartão no Firebase Storage." as N_ImagemCartao
+
+@enduml
+
